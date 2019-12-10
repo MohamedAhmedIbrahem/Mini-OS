@@ -5,13 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-struct msgbuff
-{
-   long mtype;
-   char mtext[70];
-};
-
-void main()
+void main(int argc,char*argv[])
 {
     
 }
