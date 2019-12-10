@@ -5,7 +5,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include<signal.h>
 int clk;
+void handler_SIGUSER2(int signum)
+{
+    clk++;
+    alarm(1);
+}
+void handler_ALARM(int signum)
+{
+    killpg(getgid(),SIGUSR2);
+}
 struct msgbuff
 {
    long mtype;
@@ -40,8 +50,15 @@ void main()
                 execv(args[0],args);
             }
         }
+        FILE *ptr=fopen("Logs.txt","w");
+        signal(SIGUSR2,handler_SIGUSER2);
+        signal(SIGALRM,handler_ALARM);
+        /*
+        this part is for message queues
+        */
+        alarm(1);
         while(1)    //kernel processing
-        {
+        {  
             
         }
     }
