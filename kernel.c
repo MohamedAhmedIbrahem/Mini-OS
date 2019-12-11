@@ -24,7 +24,7 @@ struct msgbuffPr
    long mtype;  //mtype = 1
    int pid; 
    char op; 
-   char mtext[64];
+   char mtext[65];
 };
 
 struct msgbuffDiskUP
@@ -38,7 +38,7 @@ struct msgbuffDiskDOWN
 { 
     long mtype;     //2 -> disk operation
     char op; 
-    char mtext[64];
+    char mtext[65];
 };
 void main()
 {
