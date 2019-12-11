@@ -8,90 +8,85 @@
 #include <signal.h>
 struct slot
 {
-	char value[65];
-   int status;
+    char value[65];
+    int status;
 };
 
-int clk = 0;
+struct msgbuffDiskUP
+{
+    long mtype;  // 3 -> dist status 
+    int numberOfFreeSlots;
+    int status[10];
+};
+
+struct msgbuffDiskDOWN
+{ 
+    long mtype;     //2 -> disk operation
+    char op; 
+    char mtext[65];
+};
+
+int clk;
 key_t msgUp;
 key_t msgDown;
 int freeSlots;
 struct slot slots[10];
 int rcv, snd;
-struct msgbuff msgbufSnd;
-
-struct msgbuff
-{
-   long mtype;
-   int freSlots;
-   int slots[10];
-   char mtext[65];
-   char op;
-};
 
 // Handler for SIGUSR1.
-void handler1 (int sig_num){
-
+void handler1 (int signum){
    // Building msgbuffer to be send to Kernel.
-   msgbufSnd.freSlots = freeSlots;
-   msgbufSnd.mtype = 0;
-
+   struct msgbuffDiskUP msgbufSnd;
+   msgbufSnd.mtype = 3;
+   msgbufSnd.numberOfFreeSlots = freeSlots;
    for (int i=0; i<10; i++){
-      msgbufSnd.slots[i] = slots[i].status;
+      msgbufSnd.status[i] = slots[i].status;
    }
-   
    // Sending Message to Kernel.
-   snd = msgsnd(msgUp, &msgbufSnd, sizeof(msgbufSnd) - sizeof (long), !IPC_NOWAIT);
-
+   snd = msgsnd(msgUp, &msgbufSnd, sizeof(msgbufSnd)-sizeof(long), !IPC_NOWAIT);
    // If it failed to send.
-   if (snd != 0){
+   if (snd == -1){
       printf("Error in sending Message to Kernel.");
    }
-   return;
 }
-void handler2(int sig_num){
-   clk = clk + 1;
-   return;
+void handler2(int signum){
+   clk++;
 }
 
 // Where everything starts.
-void main(int argc, char **argv)
+void main(int argc, char *argv[])
 {
-   msgUp = atoi(argv[1]);
-   msgDown = atoi(argv[2]); 
-
-   for(int i=0; i<10; i++){
-      slots[i].status = 0;
-   }
-
-   freeSlots = 10;
    signal(SIGUSR1, handler1);
    signal(SIGUSR2, handler2);
-
-   int busy = 0;
-   struct msgbuff* msgbufRec;
-   int delId;
-
+   msgUp = atoi(argv[1]);
+   msgDown = atoi(argv[2]); 
+   for(int i=0;i<10;i++)
+        slots[i].status=0;
+   freeSlots = 10;
+   pause();
    while(1){
-      rcv = msgrcv(msgDown,msgbufRec,sizeof(msgbufRec)-sizeof(long), 2, IPC_NOWAIT);
-      if (rcv == 0){
+      struct msgbuffDiskDOWN msgbufRec;
+      rcv = msgrcv(msgDown,&msgbufRec,sizeof(msgbufRec)-sizeof(long), 0, !IPC_NOWAIT);
+      if (rcv != -1){
 
          // If it is Add operation.
-         if (msgbufRec->op == 'A'){
+         if (msgbufRec.op == 'A'){
             for (int i=0; i<10; i++){
                if (slots[i].status == 0){
-                  strcpy(slots[i].value, msgbufRec->mtext);
-                  freeSlots = freeSlots - 1;
+                  strcpy(slots[i].value, msgbufRec.mtext);
+                  freeSlots--;
+                  slots[i].status=1;
+                  break;
                }
             }
          }
 
          // If it is Delete operation.
          else{
-            delId = msgbufRec->mtext[0] - '0';
+            int delId = msgbufRec.mtext[0] - '0';
             if ( delId >= 0 && delId < 10){
                slots[delId].status = 0;
-               freeSlots = freeSlots + 1;
+               freeSlots++;
             }
          }
       }

@@ -12,33 +12,45 @@
 #include <stdio.h>
 #include <unistd.h>
 #include<signal.h>
+int clk;
 struct msgbuff
 {
    long mtype;
    int pid;
    char op;
-   char mtext[70];
+   char mtext[65];
 };
 void handler(int signum)
 {
-    printf("hello aly\n");
+    clk++;
 }
 void do_parent(int pnum,key_t msgqid)
 {
-    printf("msgqid = %d from process %d \n",msgqid,pnum);
-    int send_val;
-    char str[2];
-    sprintf(str,"%d",pnum);
+    for(int i=0;i<2;i++)
+    {
+        struct msgbuff msg;
+        msg.mtype =1;
+        msg.pid=pnum;
+        msg.op='A';
+        char str[]="alii khaled\n";
+        strcpy(msg.mtext,str);
+        int send_val = msgsnd(msgqid,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
+        if(send_val==-1)
+            perror("Error in send\n");
+        sleep(10);
+    }
     struct msgbuff msg;
     msg.mtype =1;
+    msg.pid=pnum;
+    msg.op='D';
+    char str[]="0";
     strcpy(msg.mtext,str);
-    int id = msgget(msgqid,IPC_CREAT|IPC_EXCL);
-    printf("process %d %d \n",pnum,id);
-    send_val = msgsnd(msgqid,&msg,sizeof(msg)-sizeof(long),!IPC_NOWAIT);
+    int send_val = msgsnd(msgqid,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
     if(send_val==-1)
         perror("Error in send\n");
-    
+    sleep(10);
 }
+
 void main(int argc,char*argv[])
 {   
     int pnum=atoi(argv[1]);

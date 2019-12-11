@@ -10,8 +10,8 @@ int clk,latency;
 void handler_SIGUSER2(int signum)
 {
     clk++;
-    latency--;
-    latency=max(latency,0);
+    if(latency)
+        latency--;
     alarm(1);
 }
 void handler_ALARM(int signum)
@@ -52,7 +52,7 @@ void main()
     }
     if(Disk_pid==0) //child
     {
-        char up_queue[10],down_queue[10];
+        char up_queue[20],down_queue[20];
         sprintf(up_queue,"%d",disk_Queue_Up);
         sprintf(down_queue,"%d",disk_Queue_Down);
         char*args[]={"./Disk",up_queue,down_queue,NULL};
@@ -77,11 +77,10 @@ void main()
                 execv(args[0],args);
             }
         }
-        FILE *ptr=fopen("Logs.txt","w");
+        FILE *ptr = fopen("Logs.txt","w");
         signal(SIGUSR2,handler_SIGUSER2);
         signal(SIGALRM,handler_ALARM);
         alarm(1);
-        printf("kernel %d \n",getpgrp());
         while(1)    //kernel processing
         {  
             while(latency);                         //wait until the disk completes its job
@@ -89,7 +88,7 @@ void main()
             int process_rec_val = msgrcv(pr_Queue_Id,&process_msg,sizeof(process_msg)-sizeof(long),0,IPC_NOWAIT);
             if(process_rec_val == -1)
                 continue;
-            kill(SIGUSR1,Disk_pid);                 //ask for disk status
+            kill(Disk_pid,SIGUSR1);                 //ask for disk status
             struct msgbuffDiskUP Disk_status;       //recieve disk status
             int Disk_rec_status = msgrcv(disk_Queue_Up,&Disk_status,sizeof(Disk_status)-sizeof(long),0,!IPC_NOWAIT);
             if(process_msg.op == 'A')
@@ -101,11 +100,11 @@ void main()
                     msg.op='A';
                     strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
-                    fprintf(ptr,"Successful Add from process %d \n",process_msg.pid);
+                    fprintf(ptr,"Successful Add from process %d at %d \n",process_msg.pid,clk);
                     latency=3;
                 }
                 else
-                    fprintf(ptr,"UnSuccessful Add from process %d \n",process_msg.pid);
+                    fprintf(ptr,"UnSuccessful Add from process %d at %d \n",process_msg.pid,clk);
             }
             if(process_msg.op == 'D')
             {
@@ -114,13 +113,14 @@ void main()
                     struct msgbuffDiskDOWN msg;
                     msg.mtype=2;
                     msg.op='D';
-                    strcpy(msg.mtext,process_msg.mtext[0]);
+                    process_msg.mtext[1]='\0';
+                    strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
-                    fprintf(ptr,"Successful Delete from process %d \n",process_msg.pid);
+                    fprintf(ptr,"Successful Delete from process %d at %d \n",process_msg.pid,clk);
                     latency=1;
                 }
                 else
-                    fprintf(ptr,"UnSuccessful Delete from process %d \n",process_msg.pid);
+                    fprintf(ptr,"UnSuccessful Delete from process %d at %d \n",process_msg.pid,clk);
             }
         }
     }
