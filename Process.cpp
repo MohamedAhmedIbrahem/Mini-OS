@@ -1,5 +1,5 @@
 #include <iostream>
-#include<bits/stdc++.h>
+#include <bits/stdc++.h>
 #include <unistd.h>
 #include <sys/wait.h> 
 #include <vector>
