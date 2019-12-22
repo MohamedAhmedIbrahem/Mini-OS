@@ -1,12 +1,16 @@
+#include<iostream>
+#include<signal.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <wait.h>
 #include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include<signal.h>
-int clk,latency;
+#include<fstream>
+using namespace std;
+
+int clk,latency,killed;
 void handler_SIGUSER2(int signum)
 {
     clk++;
@@ -16,8 +20,15 @@ void handler_SIGUSER2(int signum)
 }
 void handler_ALARM(int signum)
 {
-    printf("Alarm handler\n");
     killpg(getpgrp(),SIGUSR2);
+}
+void handler_SIGCHLD(int signum)
+{
+    int pid,status;
+    while((pid = waitpid(-1,&status,WNOHANG))>0)
+    {
+        killed++;
+    }
 }
 struct msgbuffPr
 {
@@ -40,7 +51,7 @@ struct msgbuffDiskDOWN
     char op; 
     char mtext[65];
 };
-void main()
+int main()
 {
     key_t pr_Queue_Id=msgget(IPC_PRIVATE,0664);// Processes
     key_t disk_Queue_Up=msgget(IPC_PRIVATE,0664);// Disk Up
@@ -60,7 +71,7 @@ void main()
     }
     else            //parent
     {
-        int n=3;
+        int n=1;
         for(int i=0;i<n;i++)
         {
             pid_t child = fork();
@@ -77,9 +88,11 @@ void main()
                 execv(args[0],args);
             }
         }
-        FILE *ptr = fopen("Logs.txt","w");
+        // FILE *ptr = fopen("Logs.txt","w");
+        ofstream out("Logs.txt");
         signal(SIGUSR2,handler_SIGUSER2);
         signal(SIGALRM,handler_ALARM);
+        signal(SIGCHLD,handler_SIGCHLD);
         alarm(1);
         while(1)    //kernel processing
         {  
@@ -87,7 +100,14 @@ void main()
             struct msgbuffPr process_msg;           //take message from processes
             int process_rec_val = msgrcv(pr_Queue_Id,&process_msg,sizeof(process_msg)-sizeof(long),0,IPC_NOWAIT);
             if(process_rec_val == -1)
+            {
+                if(killed == n) 
+                {
+                    kill(Disk_pid,SIGKILL);
+                    break;
+                }
                 continue;
+            }
             kill(Disk_pid,SIGUSR1);                 //ask for disk status
             struct msgbuffDiskUP Disk_status;       //recieve disk status
             int Disk_rec_status = msgrcv(disk_Queue_Up,&Disk_status,sizeof(Disk_status)-sizeof(long),0,!IPC_NOWAIT);
@@ -100,11 +120,11 @@ void main()
                     msg.op='A';
                     strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
-                    fprintf(ptr,"Successful Add from process %d at %d \n",process_msg.pid,clk);
+                    out << "Successful Add from process "<< process_msg.pid << " at " << clk <<endl;
                     latency=3;
                 }
                 else
-                    fprintf(ptr,"UnSuccessful Add from process %d at %d \n",process_msg.pid,clk);
+                    out << "UnSuccessful Add from process "<< process_msg.pid << " at " << clk <<endl;
             }
             if(process_msg.op == 'D')
             {
@@ -116,13 +136,13 @@ void main()
                     process_msg.mtext[1]='\0';
                     strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
-                    fprintf(ptr,"Successful Delete from process %d at %d \n",process_msg.pid,clk);
+                    out << "Successful Delete from process "<< process_msg.pid << " at " << clk <<endl;
                     latency=1;
                 }
                 else
-                    fprintf(ptr,"UnSuccessful Delete from process %d at %d \n",process_msg.pid,clk);
+                    out << "UnSuccessful Delete from process "<< process_msg.pid << " at " << clk <<endl;
             }
         }
+        out<<"Kernel is Done\n";
     }
-    
 }
