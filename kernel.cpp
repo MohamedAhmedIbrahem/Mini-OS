@@ -71,7 +71,7 @@ int main()
     }
     else            //parent
     {
-        int n=1;
+        int n=2;
         for(int i=0;i<n;i++)
         {
             pid_t child = fork();
@@ -120,8 +120,8 @@ int main()
                     msg.op='A';
                     strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
-                    out << "Successful Add from process "<< process_msg.pid << " at " << clk <<endl;
                     latency=3;
+                    out << "Successful Add from process "<< process_msg.pid << " at " << clk <<" "<<string(msg.mtext)<<endl;
                 }
                 else
                     out << "UnSuccessful Add from process "<< process_msg.pid << " at " << clk <<endl;
@@ -136,13 +136,13 @@ int main()
                     process_msg.mtext[1]='\0';
                     strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
-                    out << "Successful Delete from process "<< process_msg.pid << " at " << clk <<endl;
                     latency=1;
+                    out << "Successful Delete from process "<< process_msg.pid << " at " << clk << " " << msg.mtext[0]<<endl;
                 }
                 else
-                    out << "UnSuccessful Delete from process "<< process_msg.pid << " at " << clk <<endl;
+                    out << "UnSuccessful Delete from process "<< process_msg.pid << " at " << clk <<" with index "<<process_msg.mtext[0]<<endl;
             }
         }
-        out<<"Kernel is Done\n";
+        out<<"Kernel is Done at "<<clk<<endl;
     }
 }

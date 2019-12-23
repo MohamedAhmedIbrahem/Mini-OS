@@ -63,7 +63,6 @@ void main(int argc, char *argv[])
    for(int i=0;i<10;i++)
         slots[i].status=0;
    freeSlots = 10;
-   pause();
    while(1){
       struct msgbuffDiskDOWN msgbufRec;
       rcv = msgrcv(msgDown,&msgbufRec,sizeof(msgbufRec)-sizeof(long), 0, !IPC_NOWAIT);
@@ -89,6 +88,7 @@ void main(int argc, char *argv[])
                freeSlots++;
             }
          }
+
       }
    }
 }

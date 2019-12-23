@@ -23,7 +23,7 @@ struct msgbuff
 };
 struct ProcessInformation
 {
-    float RequestTime;
+    int RequestTime;
     string operation;
     string data;
     bool operator < (const ProcessInformation & a)const
@@ -43,8 +43,12 @@ void Read_File(string Input, vector<ProcessInformation> & MyProcesses)
     string x;
     while (getline(File,x))
     {
-        stringstream ss(x);
-        ss >> temp.RequestTime>>temp.operation>>temp.data;
+        int split = x.find(' ');
+        temp.RequestTime = stoi(x.substr(0,split));
+        x = x.substr(split+1);
+        split = x.find(' ');
+        temp.operation = x.substr(0,split);
+        temp.data = x.substr(split+1);
         MyProcesses.push_back(temp);
     }
     File.close();
@@ -57,7 +61,7 @@ int main(int argc , char* argv[])
 {
     signal(SIGUSR2 , handler);
     int num = atoi(argv[1]);
-    string Input = "process" + to_string(num) + ".txt";
+    string Input = "test/process" + to_string(num) + ".txt";
     vector<ProcessInformation> MyProcesses;
     Read_File(Input, MyProcesses);
     sort(MyProcesses.begin(),MyProcesses.end());
