@@ -121,7 +121,7 @@ int main()
                     strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
                     latency=3;
-                    out << "Successful Add from process "<< process_msg.pid << " at " << clk <<" "<<string(msg.mtext)<<endl;
+                    out << "Successful Add from process "<< process_msg.pid << " at " << clk <<" message : "<<string(msg.mtext)<<endl;
                 }
                 else
                     out << "UnSuccessful Add from process "<< process_msg.pid << " at " << clk <<endl;
@@ -137,10 +137,10 @@ int main()
                     strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
                     latency=1;
-                    out << "Successful Delete from process "<< process_msg.pid << " at " << clk << " " << msg.mtext[0]<<endl;
+                    out << "Successful Delete from process "<< process_msg.pid << " at " << clk << " index : " << msg.mtext[0]<<endl;
                 }
                 else
-                    out << "UnSuccessful Delete from process "<< process_msg.pid << " at " << clk <<" with index "<<process_msg.mtext[0]<<endl;
+                    out << "UnSuccessful Delete from process "<< process_msg.pid << " at " << clk <<" index : "<<process_msg.mtext[0]<<endl;
             }
         }
         out<<"Kernel is Done at "<<clk<<endl;
