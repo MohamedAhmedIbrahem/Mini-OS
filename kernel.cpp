@@ -1,4 +1,5 @@
 #include<iostream>
+#include<bits/stdc++.h>
 #include<signal.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -56,6 +57,11 @@ int main()
     key_t pr_Queue_Id=msgget(IPC_PRIVATE,0664);// Processes
     key_t disk_Queue_Up=msgget(IPC_PRIVATE,0664);// Disk Up
     key_t disk_Queue_Down=msgget(IPC_PRIVATE,0664);//Disk Down 
+    if(pr_Queue_Id == -1 || disk_Queue_Down == -1 || disk_Queue_Up == -1)
+    {
+        perror("Error in Creating Message Queues \n");
+        return 0;
+    }
     pid_t Disk_pid=fork();
     if(Disk_pid==-1)
     {
@@ -93,24 +99,32 @@ int main()
         signal(SIGUSR2,handler_SIGUSER2);
         signal(SIGALRM,handler_ALARM);
         signal(SIGCHLD,handler_SIGCHLD);
+        queue<msgbuffPr>q;
         alarm(1);
         while(1)    //kernel processing
         {  
-            while(latency);                         //wait until the disk completes its job
             struct msgbuffPr process_msg;           //take message from processes
             int process_rec_val = msgrcv(pr_Queue_Id,&process_msg,sizeof(process_msg)-sizeof(long),0,IPC_NOWAIT);
-            if(process_rec_val == -1)
+            if(process_rec_val == -1 && killed == n && !q.size())
             {
-                if(killed == n) 
-                {
-                    kill(Disk_pid,SIGKILL);
-                    break;
-                }
-                continue;
+                while(latency);
+                kill(Disk_pid,SIGKILL);
+                break;
             }
+            if(process_rec_val != -1)
+            {
+                q.push(process_msg);
+                out << clk <<"   Recieved a Message From Process " << process_msg.pid << " says "<<process_msg.op<<": "<<string(process_msg.mtext) << endl;
+            }
+            if(latency || !q.size())                //Disk is Busy or there are no messages to process
+                continue;
             kill(Disk_pid,SIGUSR1);                 //ask for disk status
             struct msgbuffDiskUP Disk_status;       //recieve disk status
             int Disk_rec_status = msgrcv(disk_Queue_Up,&Disk_status,sizeof(Disk_status)-sizeof(long),0,!IPC_NOWAIT);
+            out << endl;
+            out << clk <<"   Disk's Number of Free Slots" << " is " << Disk_status.numberOfFreeSlots << endl;
+            process_msg = q.front();
+            q.pop();
             if(process_msg.op == 'A')
             {
                 if(Disk_status.numberOfFreeSlots>0)
@@ -121,10 +135,10 @@ int main()
                     strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
                     latency=3;
-                    out << "Successful Add from process "<< process_msg.pid << " at " << clk <<" message : "<<string(msg.mtext)<<endl;
+                    out << clk <<"   Successful Add from process "<< process_msg.pid << " message : " << string(msg.mtext) << endl;
                 }
                 else
-                    out << "UnSuccessful Add from process "<< process_msg.pid << " at " << clk <<endl;
+                    out << clk <<"   UnSuccessful Add from process " << process_msg.pid << endl;
             }
             if(process_msg.op == 'D')
             {
@@ -137,12 +151,16 @@ int main()
                     strcpy(msg.mtext,process_msg.mtext);
                     msgsnd(disk_Queue_Down,&msg,sizeof(msg)-sizeof(long),IPC_NOWAIT);
                     latency=1;
-                    out << "Successful Delete from process "<< process_msg.pid << " at " << clk << " index : " << msg.mtext[0]<<endl;
+                    out << clk << "   Successful Delete from process " << process_msg.pid << " index : " << msg.mtext[0] << endl;
                 }
                 else
-                    out << "UnSuccessful Delete from process "<< process_msg.pid << " at " << clk <<" index : "<<process_msg.mtext[0]<<endl;
+                    out << clk <<"   UnSuccessful Delete from process " << process_msg.pid << " index : " << process_msg.mtext[0] << endl;
             }
+            out << endl;
         }
-        out<<"Kernel is Done at "<<clk<<endl;
+        out<< clk <<"   Kernel is Done " << endl;
+        msgctl(pr_Queue_Id, IPC_RMID, (struct msqid_ds *) 0);
+        msgctl(disk_Queue_Up, IPC_RMID, (struct msqid_ds *) 0);
+        msgctl(disk_Queue_Down, IPC_RMID, (struct msqid_ds *) 0);
     }
 }
