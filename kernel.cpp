@@ -142,7 +142,8 @@ int main()
             }
             if(process_msg.op == 'D')
             {
-                if(Disk_status.status[process_msg.mtext[0]-'0'])
+                int index = process_msg.mtext[0]-'0';
+                if(index >= 0 && index<=9 && Disk_status.status[index])
                 {
                     struct msgbuffDiskDOWN msg;
                     msg.mtype=2;
@@ -154,7 +155,7 @@ int main()
                     out << clk << "   Successful Delete from process " << process_msg.pid << " index : " << msg.mtext[0] << endl;
                 }
                 else
-                    out << clk <<"   UnSuccessful Delete from process " << process_msg.pid << " index : " << process_msg.mtext[0] << endl;
+                    out << clk <<"   UnSuccessful Delete from process " << process_msg.pid << " index : " << string(process_msg.mtext) << endl;
             }
             out << endl;
         }

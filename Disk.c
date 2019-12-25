@@ -83,10 +83,8 @@ void main(int argc, char *argv[])
          // If it is Delete operation.
          else{
             int delId = msgbufRec.mtext[0] - '0';
-            if ( delId >= 0 && delId < 10){
-               slots[delId].status = 0;
-               freeSlots++;
-            }
+            slots[delId].status = 0;
+            freeSlots++;
          }
 
       }
